@@ -1,18 +1,17 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import subprocess, os, random, string, sys, shutil, socket, zipfile, urllib2
-from itertools import cycle, izip
+import subprocess, os, random, string, sys, shutil, socket, zipfile, base64
+from itertools import cycle
 from zipfile import ZipFile
-from urllib2 import Request, urlopen, URLError, HTTPError
+from urllib import request, error
 
 rDownloadURL = {"main": "http://xtream-ui.org/main_xtreamcodes_reborn.tar.gz", "sub": "http://xtream-ui.org/sub_xtreamcodes_reborn.tar.gz"}
 rPackages = ["libcurl3", "libxslt1-dev", "libgeoip-dev", "e2fsprogs", "wget", "mcrypt", "nscd", "htop", "zip", "unzip", "mc", "libjemalloc1", "python-paramiko", "mysql-server"]
 rInstall = {"MAIN": "main", "LB": "sub"}
 rUpdate = {"UPDATE": "update"}
-rMySQLCnf = "IyBYdHJlYW0gQ29kZXMKCltjbGllbnRdCnBvcnQgICAgICAgICAgICA9IDMzMDYKCltteXNxbGRfc2FmZV0KbmljZSAgICAgICAgICAgID0gMAoKW215c3FsZF0KZGVmYXVsdC1hdXRoZW50aWNhdGlvbi1wbHVnaW49bXlzcWxfbmF0aXZlX3Bhc3N3b3JkCnVzZXIgICAgICAgICAgICA9IG15c3FsCnBvcnQgICAgICAgICAgICA9IDc5OTkKYmFzZWRpciAgICAgICAgID0gL3VzcgpkYXRhZGlyICAgICAgICAgPSAvdmFyL2xpYi9teXNxbAp0bXBkaXIgICAgICAgICAgPSAvdG1wCgpsYy1tZXNzYWdlcy1kaXIgPSAvdXNyL3NoYXJlL215c3FsCnNraXAtZXh0ZXJuYWwtbG9ja2luZwpza2lwLW5hbWUtcmVzb2x2ZT0xCgpiaW5kLWFkZHJlc3MgICAgICAgICAgICA9ICoKCmtleV9idWZmZXJfc2l6ZSA9IDEyOE0KbXlpc2FtX3NvcnRfYnVmZmVyX3NpemUgPSA0TQptYXhfYWxsb3dlZF9wYWNrZXQgICAgICA9IDY0TQpteWlzYW0tcmVjb3Zlci1vcHRpb25zID0gQkFDS1VQCm1heF9sZW5ndGhfZm9yX3NvcnRfZGF0YSA9IDgxOTIKcXVlcnlfY2FjaGVfbGltaXQgPSAwCnF1ZXJ5X2NhY2hlX3NpemUgPSAwCnF1ZXJ5X2NhY2hlX3R5cGUgPSAwCgpleHBpcmVfbG9nc19kYXlzID0gMTAKI2JpbmxvZ19leHBpcmVfbG9nc19zZWNvbmRzID0gODY0MDAwCm1heF9iaW5sb2dfc2l6ZSA9IDEwME0KdHJhbnNhY3Rpb25faXNvbGF0aW9uID0gUkVBRC1DT01NSVRURUQKbWF4X2Nvbm5lY3Rpb25zICA9IDEwMDAwCm9wZW5fZmlsZXNfbGltaXQgPSAxMDI0MAppbm5vZGJfb3Blbl9maWxlcyA9MTAyNDAKbWF4X2Nvbm5lY3RfZXJyb3JzID0gNDA5Ngp0YWJsZV9vcGVuX2NhY2hlID0gNDA5Ngp0YWJsZV9kZWZpbml0aW9uX2NhY2hlID0gNDA5Ngp0bXBfdGFibGVfc2l6ZSA9IDFHCm1heF9oZWFwX3RhYmxlX3NpemUgPSAxRwptYXhfZXhlY3V0aW9uX3RpbWUgPSAwCmJhY2tfbG9nID0gNDA5NgoKaW5ub2RiX2J1ZmZlcl9wb29sX3NpemUgPSA4Rwppbm5vZGJfYnVmZmVyX3Bvb2xfaW5zdGFuY2VzID0gOAppbm5vZGJfcmVhZF9pb190aHJlYWRzID0gNjQKaW5ub2RiX3dyaXRlX2lvX3RocmVhZHMgPSA2NAppbm5vZGJfdGhyZWFkX2NvbmN1cnJlbmN5ID0gMAppbm5vZGJfZmx1c2hfbG9nX2F0X3RyeF9jb21taXQgPSAwCmlubm9kYl9mbHVzaF9tZXRob2QgPSBPX0RJUkVDVApwZXJmb3JtYW5jZV9zY2hlbWEgPSAwCmlubm9kYi1maWxlLXBlci10YWJsZSA9IDEKaW5ub2RiX2lvX2NhcGFjaXR5ID0gMTAwMDAKaW5ub2RiX3RhYmxlX2xvY2tzID0gMAppbm5vZGJfbG9ja193YWl0X3RpbWVvdXQgPSAwCmlubm9kYl9kZWFkbG9ja19kZXRlY3QgPSAwCmlubm9kYl9sb2dfZmlsZV9zaXplID0gMUcKCnNxbC1tb2RlPSJOT19FTkdJTkVfU1VCU1RJVFVUSU9OIgoKCltteXNxbGR1bXBdCnF1aWNrCnF1b3RlLW5hbWVzCm1heF9hbGxvd2VkX3BhY2tldCAgICAgID0gMTI4TQpjb21wbGV0ZS1pbnNlcnQKCltteXNxbF0KCltpc2FtY2hrXQprZXlfYnVmZmVyX3NpemUgICAgICAgICAgICAgID0gMTZN==".decode("base64")
-rMySQLServiceFile = "IyBNeVNRTCBzeXN0ZW1kIHNlcnZpY2UgZmlsZQoKW1VuaXRdCkRlc2NyaXB0aW9uPU15U1FMIENvbW11bml0eSBTZXJ2ZXIKQWZ0ZXI9bmV0d29yay50YXJnZXQKCltJbnN0YWxsXQpXYW50ZWRCeT1tdWx0aS11c2VyLnRhcmdldAoKW1NlcnZpY2VdClR5cGU9Zm9ya2luZwpVc2VyPW15c3FsCkdyb3VwPW15c3FsClBJREZpbGU9L3J1bi9teXNxbGQvbXlzcWxkLnBpZApQZXJtaXNzaW9uc1N0YXJ0T25seT10cnVlCkV4ZWNTdGFydFByZT0vdXNyL3NoYXJlL215c3FsL215c3FsLXN5c3RlbWQtc3RhcnQgcHJlCkV4ZWNTdGFydD0vdXNyL3NiaW4vbXlzcWxkIC0tZGFlbW9uaXplIC0tcGlkLWZpbGU9L3J1bi9teXNxbGQvbXlzcWxkLnBpZCAtLW1heC1leGVjdXRpb24tdGltZT0wCkVudmlyb25tZW50RmlsZT0tL2V0Yy9teXNxbC9teXNxbGQKVGltZW91dFNlYz02MDAKUmVzdGFydD1vbi1mYWlsdXJlClJ1bnRpbWVEaXJlY3Rvcnk9bXlzcWxkClJ1bnRpbWVEaXJlY3RvcnlNb2RlPTc1NQpMaW1pdE5PRklMRT01MDAw==".decode("base64")
-rSysCtl = "IyBmcm9tIFhVSS5vbmUgc2VydmVyCm5ldC5jb3JlLnNvbWF4Y29ubiA9IDY1NTM1MApuZXQuaXB2NC5yb3V0ZS5mbHVzaD0xCm5ldC5pcHY0LnRjcF9ub19tZXRyaWNzX3NhdmU9MQpuZXQuaXB2NC50Y3BfbW9kZXJhdGVfcmN2YnVmID0gMQpmcy5maWxlLW1heCA9IDY4MTU3NDQKZnMuYWlvLW1heC1uciA9IDY4MTU3NDQKZnMubnJfb3BlbiA9IDY4MTU3NDQKbmV0LmlwdjQuaXBfbG9jYWxfcG9ydF9yYW5nZSA9IDEwMjQgNjUwMDAKbmV0LmlwdjQudGNwX3NhY2sgPSAxCm5ldC5pcHY0LnRjcF9ybWVtID0gMTAwMDAwMDAgMTAwMDAwMDAgMTAwMDAwMDAKbmV0LmlwdjQudGNwX3dtZW0gPSAxMDAwMDAwMCAxMDAwMDAwMCAxMDAwMDAwMApuZXQuaXB2NC50Y3BfbWVtID0gMTAwMDAwMDAgMTAwMDAwMDAgMTAwMDAwMDAKbmV0LmNvcmUucm1lbV9tYXggPSA1MjQyODcKbmV0LmNvcmUud21lbV9tYXggPSA1MjQyODcKbmV0LmNvcmUucm1lbV9kZWZhdWx0ID0gNTI0Mjg3Cm5ldC5jb3JlLndtZW1fZGVmYXVsdCA9IDUyNDI4NwpuZXQuY29yZS5vcHRtZW1fbWF4ID0gNTI0Mjg3Cm5ldC5jb3JlLm5ldGRldl9tYXhfYmFja2xvZyA9IDMwMDAwMApuZXQuaXB2NC50Y3BfbWF4X3N5bl9iYWNrbG9nID0gMzAwMDAwCm5ldC5uZXRmaWx0ZXIubmZfY29ubnRyYWNrX21heD0xMjE1MTk2NjA4Cm5ldC5pcHY0LnRjcF93aW5kb3dfc2NhbGluZyA9IDEKdm0ubWF4X21hcF9jb3VudCA9IDY1NTMwMApuZXQuaXB2NC50Y3BfbWF4X3R3X2J1Y2tldHMgPSA1MDAwMApuZXQuaXB2Ni5jb25mLmFsbC5kaXNhYmxlX2lwdjYgPSAxCm5ldC5pcHY2LmNvbmYuZGVmYXVsdC5kaXNhYmxlX2lwdjYgPSAxCm5ldC5pcHY2LmNvbmYubG8uZGlzYWJsZV9pcHY2ID0gMQprZXJuZWwuc2htbWF4PTEzNDIxNzcyOAprZXJuZWwuc2htYWxsPTEzNDIxNzcyOAp2bS5vdmVyY29tbWl0X21lbW9yeSA9IDEKbmV0LmlwdjQudGNwX3R3X3JldXNlPTEKdm0uc3dhcHBpbmVzcz0xMA==".decode("base64")
-# i am lazy to prepare echo versions with escaped characters, use base64 decode/encode to read or change these.
+rMySQLCnf = base64.b64decode("IyBYdHJlYW0gQ29kZXMKCltjbGllbnRdCnBvcnQgICAgICAgICAgICA9IDMzMDYKCltteXNxbGRfc2FmZV0KbmljZSAgICAgICAgICAgID0gMAoKW215c3FsZF0KZGVmYXVsdC1hdXRoZW50aWNhdGlvbi1wbHVnaW49bXlzcWxfbmF0aXZlX3Bhc3N3b3JkCnVzZXIgICAgICAgICAgICA9IG15c3FsCnBvcnQgICAgICAgICAgICA9IDc5OTkKYmFzZWRpciAgICAgICAgID0gL3VzcgpkYXRhZGlyICAgICAgICAgPSAvdmFyL2xpYi9teXNxbAp0bXBkaXIgICAgICAgICAgPSAvdG1wCgpsYy1tZXNzYWdlcy1kaXIgPSAvdXNyL3NoYXJlL215c3FsCnNraXAtZXh0ZXJuYWwtbG9ja2luZwpza2lwLW5hbWUtcmVzb2x2ZT0xCgpiaW5kLWFkZHJlc3MgICAgICAgICAgICA9ICoKCmtleV9idWZmZXJfc2l6ZSA9IDEyOE0KbXlpc2FtX3NvcnRfYnVmZmVyX3NpemUgPSA0TQptYXhfYWxsb3dlZF9wYWNrZXQgICAgICA9IDY0TQpteWlzYW0tcmVjb3Zlci1vcHRpb25zID0gQkFDS1VQCm1heF9sZW5ndGhfZm9yX3NvcnRfZGF0YSA9IDgxOTIKcXVlcnlfY2FjaGVfbGltaXQgPSAwCnF1ZXJ5X2NhY2hlX3NpemUgPSAwCnF1ZXJ5X2NhY2hlX3R5cGUgPSAwCgpleHBpcmVfbG9nc19kYXlzID0gMTAKI2JpbmxvZ19leHBpcmVfbG9nc19zZWNvbmRzID0gODY0MDAwCm1heF9iaW5sb2dfc2l6ZSA9IDEwME0KdHJhbnNhY3Rpb25faXNvbGF0aW9uID0gUkVBRC1DT01NSVRURUQKbWF4X2Nvbm5lY3Rpb25zICA9IDEwMDAwCm9wZW5fZmlsZXNfbGltaXQgPSAxMDI0MAppbm5vZGJfb3Blbl9maWxlcyA9MTAyNDAKbWF4X2Nvbm5lY3RfZXJyb3JzID0gNDA5Ngp0YWJsZV9vcGVuX2NhY2hlID0gNDA5Ngp0YWJsZV9kZWZpbml0aW9uX2NhY2hlID0gNDA5Ngp0bXBfdGFibGVfc2l6ZSA9IDFHCm1heF9oZWFwX3RhYmxlX3NpemUgPSAxRwptYXhfZXhlY3V0aW9uX3RpbWUgPSAwCmJhY2tfbG9nID0gNDA5NgoKaW5ub2RiX2J1ZmZlcl9wb29sX3NpemUgPSA4Rwppbm5vZGJfYnVmZmVyX3Bvb2xfaW5zdGFuY2VzID0gOAppbm5vZGJfcmVhZF9pb190aHJlYWRzID0gNjQKaW5ub2RiX3dyaXRlX2lvX3RocmVhZHMgPSA2NAppbm5vZGJfdGhyZWFkX2NvbmN1cnJlbmN5ID0gMAppbm5vZGJfZmx1c2hfbG9nX2F0X3RyeF9jb21taXQgPSAwCmlubm9kYl9mbHVzaF9tZXRob2QgPSBPX0RJUkVDVApwZXJmb3JtYW5jZV9zY2hlbWEgPSAwCmlubm9kYi1maWxlLXBlci10YWJsZSA9IDEKaW5ub2RiX2lvX2NhcGFjaXR5ID0gMTAwMDAKaW5ub2RiX3RhYmxlX2xvY2tzID0gMAppbm5vZGJfbG9ja193YWl0X3RpbWVvdXQgPSAwCmlubm9kYl9kZWFkbG9ja19kZXRlY3QgPSAwCmlubm9kYl9sb2dfZmlsZV9zaXplID0gMUcKCnNxbC1tb2RlPSJOT19FTkdJTkVfU1VCU1RJVFVUSU9OIgoKCltteXNxbGR1bXBdCnF1aWNrCnF1b3RlLW5hbWVzCm1heF9hbGxvd2VkX3BhY2tldCAgICAgID0gMTI4TQpjb21wbGV0ZS1pbnNlcnQKCltteXNxbF0KCltpc2FtY2hrXQprZXlfYnVmZmVyX3NpemUgICAgICAgICAgICAgID0gMTZN==").decode("utf-8")
+rMySQLServiceFile = base64.b64decode("IyBNeVNRTCBzeXN0ZW1kIHNlcnZpY2UgZmlsZQoKW1VuaXRdCkRlc2NyaXB0aW9uPU15U1FMIENvbW11bml0eSBTZXJ2ZXIKQWZ0ZXI9bmV0d29yay50YXJnZXQKCltJbnN0YWxsXQpXYW50ZWRCeT1tdWx0aS11c2VyLnRhcmdldAoKW1NlcnZpY2VdClR5cGU9Zm9ya2luZwpVc2VyPW15c3FsCkdyb3VwPW15c3FsClBJREZpbGU9L3J1bi9teXNxbGQvbXlzcWxkLnBpZApQZXJtaXNzaW9uc1N0YXJ0T25seT10cnVlCkV4ZWNTdGFydFByZT0vdXNyL3NoYXJlL215c3FsL215c3FsLXN5c3RlbWQtc3RhcnQgcHJlCkV4ZWNTdGFydD0vdXNyL3NiaW4vbXlzcWxkIC0tZGFlbW9uaXplIC0tcGlkLWZpbGU9L3J1bi9teXNxbGQvbXlzcWxkLnBpZCAtLW1heC1leGVjdXRpb24tdGltZT0wCkVudmlyb25tZW50RmlsZT0tL2V0Yy9teXNxbC9teXNxbGQKVGltZW91dFNlYz02MDAKUmVzdGFydD1vbi1mYWlsdXJlClJ1bnRpbWVEaXJlY3Rvcnk9bXlzcWxkClJ1bnRpbWVEaXJlY3RvcnlNb2RlPTc1NQpMaW1pdE5PRklMRT01MDAw==").decode("utf-8")
+rSysCtl = base64.b64decode("IyBmcm9tIFhVSS5vbmUgc2VydmVyCm5ldC5jb3JlLnNvbWF4Y29ubiA9IDY1NTM1MApuZXQuaXB2NC5yb3V0ZS5mbHVzaD0xCm5ldC5pcHY0LnRjcF9ub19tZXRyaWNzX3NhdmU9MQpuZXQuaXB2NC50Y3BfbW9kZXJhdGVfcmN2YnVmID0gMQpmcy5maWxlLW1heCA9IDY4MTU3NDQKZnMuYWlvLW1heC1uciA9IDY4MTU3NDQKZnMubnJfb3BlbiA9IDY4MTU3NDQKbmV0LmlwdjQuaXBfbG9jYWxfcG9ydF9yYW5nZSA9IDEwMjQgNjUwMDAKbmV0LmlwdjQudGNwX3NhY2sgPSAxCm5ldC5pcHY0LnRjcF9ybWVtID0gMTAwMDAwMDAgMTAwMDAwMDAgMTAwMDAwMDAKbmV0LmlwdjQudGNwX3dtZW0gPSAxMDAwMDAwMCAxMDAwMDAwMCAxMDAwMDAwMApuZXQuaXB2NC50Y3BfbWVtID0gMTAwMDAwMDAgMTAwMDAwMDAgMTAwMDAwMDAKbmV0LmNvcmUucm1lbV9tYXggPSA1MjQyODcKbmV0LmNvcmUud21lbV9tYXggPSA1MjQyODcKbmV0LmNvcmUucm1lbV9kZWZhdWx0ID0gNTI0Mjg3Cm5ldC5jb3JlLndtZW1fZGVmYXVsdCA9IDUyNDI4NwpuZXQuY29yZS5vcHRtZW1fbWF4ID0gNTI0Mjg3Cm5ldC5jb3JlLm5ldGRldl9tYXhfYmFja2xvZyA9IDMwMDAwMApuZXQuaXB2NC50Y3BfbWF4X3N5bl9iYWNrbG9nID0gMzAwMDAwCm5ldC5uZXRmaWx0ZXIubmZfY29ubnRyYWNrX21heD0xMjE1MTk2NjA4Cm5ldC5pcHY0LnRjcF93aW5kb3dfc2NhbGluZyA9IDEKdm0ubWF4X21hcF9jb3VudCA9IDY1NTMwMApuZXQuaXB2NC50Y3BfbWF4X3R3X2J1Y2tldHMgPSA1MDAwMApuZXQuaXB2Ni5jb25mLmFsbC5kaXNhYmxlX2lwdjYgPSAxCm5ldC5pcHY2LmNvbmYuZGVmYXVsdC5kaXNhYmxlX2lwdjYgPSAxCm5ldC5pcHY2LmNvbmYubG8uZGlzYWJsZV9pcHY2ID0gMQprZXJuZWwuc2htbWF4PTEzNDIxNzcyOAprZXJuZWwuc2htYWxsPTEzNDIxNzcyOAp2bS5vdmVyY29tbWl0X21lbW9yeSA9IDEKbmV0LmlwdjQudGNwX3R3X3JldXNlPTEKdm0uc3dhcHBpbmVzcz0xMA==").decode("utf-8")
 
 class col:
     HEADER = '\033[95m'
@@ -37,16 +36,16 @@ def getVersion():
     except: return ""
 
 def printc(rText, rColour=col.OKBLUE, rPadding=0):
-    print "%s ┌──────────────────────────────────────────┐ %s" % (rColour, col.ENDC)
-    for i in range(rPadding): print "%s │                                          │ %s" % (rColour, col.ENDC)
-    print "%s │ %s%s%s │ %s" % (rColour, " "*(20-(len(rText)/2)), rText, " "*(40-(20-(len(rText)/2))-len(rText)), col.ENDC)
-    for i in range(rPadding): print "%s │                                          │ %s" % (rColour, col.ENDC)
-    print "%s └──────────────────────────────────────────┘ %s" % (rColour, col.ENDC)
-    print " "
+    print("%s ┌──────────────────────────────────────────┐ %s" % (rColour, col.ENDC))
+    for i in range(rPadding): print("%s │                                          │ %s" % (rColour, col.ENDC))
+    print("%s │ %s%s%s │ %s" % (rColour, " "*(20-(len(rText)//2)), rText, " "*(40-(20-(len(rText)//2))-len(rText)), col.ENDC))
+    for i in range(rPadding): print("%s │                                          │ %s" % (rColour, col.ENDC))
+    print("%s └──────────────────────────────────────────┘ %s" % (rColour, col.ENDC))
+    print(" ")
 
 def prepare(rType="MAIN"):
     global rPackages
-    if rType <> "MAIN": rPackages = rPackages[:-3]
+    if rType != "MAIN": rPackages = rPackages[:-3]
     printc("Preparing Installation")
     for rFile in ["/var/lib/dpkg/lock-frontend", "/var/cache/apt/archives/lock", "/var/lib/dpkg/lock"]:
         try: os.remove(rFile)
@@ -93,7 +92,7 @@ def install(rType="MAIN"):
 def update(rType="MAIN"):
     if rType == "UPDATE":
         printc("Enter the link of release_xyz.zip file:", col.WARNING)
-        rlink = raw_input('Example: https://github.com/xtream-ui-org/xtream-ui-install/raw/master/files/release_22f.zip\n\nNow enter the link:\n\n')
+        rlink = input('Example: https://github.com/xtream-ui-org/xtream-ui-install/raw/master/files/release_22f.zip\n\nNow enter the link:\n\n')
     else:
         rlink = "https://github.com/xtream-ui-org/xtream-ui-install/raw/master/files/release_22f.zip"
         printc("Installing Admin Panel")
@@ -103,9 +102,9 @@ def update(rType="MAIN"):
        'Accept-Encoding': 'none',
        'Accept-Language': 'en-US,en;q=0.8',
        'Connection': 'keep-alive'}
-    req = urllib2.Request(rlink, headers=hdr)
+    req = request.Request(rlink, headers=hdr)
     try:
-    	urllib2.urlopen(req)
+        request.urlopen(req)
     except:
         printc("Invalid download URL!", col.FAIL)
         return False
@@ -129,7 +128,6 @@ def update(rType="MAIN"):
     printc("Failed to download installation file!", col.FAIL)
     return False
 
-
 def mysql(rUsername, rPassword):
     global rMySQLCnf
     printc("Configuring MySQL")
@@ -144,12 +142,12 @@ def mysql(rUsername, rPassword):
         os.system("service mysql restart > /dev/null")
     printc("Enter MySQL Root Password:", col.WARNING)
     for i in range(5):
-        rMySQLRoot = raw_input("  ")
-        print " "
+        rMySQLRoot = input("  ")
+        print(" ")
         if len(rMySQLRoot) > 0: rExtra = " -p%s" % rMySQLRoot
         else: rExtra = ""
         printc("Drop existing & create database? Y/N", col.WARNING)
-        if raw_input("  ").upper() == "Y": rDrop = True
+        if input("  ").upper() == "Y": rDrop = True
         else: rDrop = False
         try:
             if rDrop:
@@ -157,7 +155,7 @@ def mysql(rUsername, rPassword):
                 os.system('mysql -u root%s -e "DROP DATABASE IF EXISTS xtream_iptvpro; CREATE DATABASE IF NOT EXISTS xtream_iptvpro;" > /dev/null' % rExtra)
                 os.system("mysql -u root%s xtream_iptvpro < /home/xtreamcodes/iptv_xtream_codes/database.sql > /dev/null" % rExtra)
                 os.system('mysql -u root%s -e "USE xtream_iptvpro; UPDATE settings SET live_streaming_pass = \'%s\', unique_id = \'%s\', crypt_load_balancing = \'%s\', get_real_ip_client=\'\';" > /dev/null' % (rExtra, generate(20), generate(10), generate(20)))
-                os.system('mysql -u root%s -e "USE xtream_iptvpro; REPLACE INTO streaming_servers (id, server_name, domain_name, server_ip, vpn_ip, ssh_password, ssh_port, diff_time_main, http_broadcast_port, total_clients, system_os, network_interface, latency, status, enable_geoip, geoip_countries, last_check_ago, can_delete, server_hardware, total_services, persistent_connections, rtmp_port, geoip_type, isp_names, isp_type, enable_isp, boost_fpm, http_ports_add, network_guaranteed_speed, https_broadcast_port, https_ports_add, whitelist_ips, watchdog_data, timeshift_only) VALUES (1, \'Main Server\', \'\', \'%s\', \'\', NULL, NULL, 0, 25461, 1000, \'%s\', \'eth0\', 0, 1, 0, \'\', 0, 0, \'{}\', 3, 0, 25462, \'low_priority\', \'\', \'low_priority\', 0, 1, \'\', 1000, 25463, \'\', \'[\"127.0.0.1\",\"\"]\', \'{}\', 0);" > /dev/null' % (rExtra, getIP(), getVersion()))
+                os.system('mysql -u root%s -e "USE xtream_iptvpro; REPLACE INTO streaming_servers (id, server_name, domain_name, server_ip, vpn_ip, ssh_password, ssh_port, diff_time_main, http_broadcast_port, total_clients, system_os, network_interface, latency, status, enable_geoip, geoip_countries, last_check_ago, can_delete, server_hardware, total_services, persistent_connections, rtmp_port, geoip_type, isp_names, isp_type, enable_isp, boost_fpm, http_ports_add, network_guaranteed_speed, https_broadcast_port, https_ports_add, whitelist_ips, watchdog_data, timeshift_only) VALUES (1, \'Main Server\', \'\', \'%s\', \'\', NULL, NULL, 0, 25461, 1000, \'%s\', \'eth0\', 0, 1, 0, \'\', 0, 0, \'{}\', 3, 0, 25462, \'low_priority\', \'\', \'low_priority\', 0, 1, \'\', 1000, 25463, \'\', \'[\\\"127.0.0.1\\\",\\\"\\\"]\', \'{}\', 0);" > /dev/null' % (rExtra, getIP(), getVersion()))
                 os.system('mysql -u root%s -e "USE xtream_iptvpro; REPLACE INTO reg_users (id, username, password, email, member_group_id, verified, status) VALUES (1, \'admin\', \'\$6\$rounds=20000\$xtreamcodes\$XThC5OwfuS0YwS4ahiifzF14vkGbGsFF1w7ETL4sRRC5sOrAWCjWvQJDromZUQoQuwbAXAFdX3h3Cp3vqulpS0\', \'admin@website.com\', 1, 1, 1);" > /dev/null'  % rExtra)
                 os.system('mysql -u root%s -e "CREATE USER \'%s\'@\'%%\' IDENTIFIED BY \'%s\'; GRANT ALL PRIVILEGES ON xtream_iptvpro.* TO \'%s\'@\'%%\' WITH GRANT OPTION; GRANT SELECT, LOCK TABLES ON *.* TO \'%s\'@\'%%\';FLUSH PRIVILEGES;" > /dev/null' % (rExtra, rUsername, rPassword, rUsername, rUsername))
                 os.system('mysql -u root%s -e "USE xtream_iptvpro; CREATE TABLE IF NOT EXISTS dashboard_statistics (id int(11) NOT NULL AUTO_INCREMENT, type varchar(16) NOT NULL DEFAULT \'\', time int(16) NOT NULL DEFAULT \'0\', count int(16) NOT NULL DEFAULT \'0\', PRIMARY KEY (id)) ENGINE=InnoDB DEFAULT CHARSET=latin1; INSERT INTO dashboard_statistics (type, time, count) VALUES(\'conns\', UNIX_TIMESTAMP(), 0),(\'users\', UNIX_TIMESTAMP(), 0);\" > /dev/null' % rExtra)
@@ -178,22 +176,22 @@ def encrypt(rHost="127.0.0.1", rUsername="user_iptvpro", rPassword="", rDatabase
     printc("Encrypting...")
     try: os.remove("/home/xtreamcodes/iptv_xtream_codes/config")
     except: pass
-    rf = open('/home/xtreamcodes/iptv_xtream_codes/config', 'wb')
-    rf.write(''.join(chr(ord(c)^ord(k)) for c,k in izip('{\"host\":\"%s\",\"db_user\":\"%s\",\"db_pass\":\"%s\",\"db_name\":\"%s\",\"server_id\":\"%d\", \"db_port\":\"%d\"}' % (rHost, rUsername, rPassword, rDatabase, rServerID, rPort), cycle('5709650b0d7806074842c6de575025b1'))).encode('base64').replace('\n', ''))
-    rf.close()
+    with open('/home/xtreamcodes/iptv_xtream_codes/config', 'wb') as rf:
+        to_encrypt = '{\"host\":\"%s\",\"db_user\":\"%s\",\"db_pass\":\"%s\",\"db_name\":\"%s\",\"server_id\":\"%d\", \"db_port\":\"%d\"}' % (rHost, rUsername, rPassword, rDatabase, rServerID, rPort)
+        encrypted_bytes = ''.join(chr(ord(c)^ord(k)) for c,k in zip(to_encrypt, cycle('5709650b0d7806074842c6de575025b1'))).encode('utf-8')
+        encoded = base64.b64encode(encrypted_bytes)
+        rf.write(encoded)
 
 def configure():
     printc("Configuring System")
     if not "/home/xtreamcodes/iptv_xtream_codes/" in open("/etc/fstab").read():
-        rFile = open("/etc/fstab", "a")
-        rFile.write("tmpfs /home/xtreamcodes/iptv_xtream_codes/streams tmpfs defaults,noatime,nosuid,nodev,noexec,mode=1777,size=90% 0 0\ntmpfs /home/xtreamcodes/iptv_xtream_codes/tmp tmpfs defaults,noatime,nosuid,nodev,noexec,mode=1777,size=2G 0 0")
-        rFile.close()
+        with open("/etc/fstab", "a") as rFile:
+            rFile.write("tmpfs /home/xtreamcodes/iptv_xtream_codes/streams tmpfs defaults,noatime,nosuid,nodev,noexec,mode=1777,size=90% 0 0\ntmpfs /home/xtreamcodes/iptv_xtream_codes/tmp tmpfs defaults,noatime,nosuid,nodev,noexec,mode=1777,size=2G 0 0")
     if not "xtreamcodes" in open("/etc/sudoers").read():
         os.system('echo "xtreamcodes ALL = (root) NOPASSWD: /sbin/iptables, /usr/bin/chattr" >> /etc/sudoers')
     if not os.path.exists("/etc/init.d/xtreamcodes"):
-        rFile = open("/etc/init.d/xtreamcodes", "w")
-        rFile.write("#! /bin/bash\n/home/xtreamcodes/iptv_xtream_codes/start_services.sh")
-        rFile.close()
+        with open("/etc/init.d/xtreamcodes", "w") as rFile:
+            rFile.write("#! /bin/bash\n/home/xtreamcodes/iptv_xtream_codes/start_services.sh")
         os.system("chmod +x /etc/init.d/xtreamcodes > /dev/null")
     try: os.remove("/usr/bin/ffmpeg")
     except: pass
@@ -218,11 +216,11 @@ def configure():
     os.system('echo "%s" > /etc/sysctl.conf' % rSysCtl)
     os.system("/sbin/sysctl -p > /dev/null")
     #new alias, shortcuts, restartpanel and reloadnginx
-    os.system('echo "alias restartpanel=\'sudo /home/xtreamcodes/iptv_xtream_codes/start_services.sh && echo done\'\nalias reloadnginx=\'sudo /home/xtreamcodes/iptv_xtream_codes/nginx/sbin/nginx -s reload && echo done\'" > /root/.bash_aliases')
+    os.system('echo "alias restartpanel=\'sudo /home/xtreamcodes/iptv_xtream_codes/start_services.sh && echo done\'\\nalias reloadnginx=\'sudo /home/xtreamcodes/iptv_xtream_codes/nginx/sbin/nginx -s reload && echo done\'" > /root/.bash_aliases')
     os.system("source /root/.bashrc > /dev/null")
-    if not "api.xtream-codes.com" in open("/etc/hosts").read(): os.system('echo "127.0.0.1    api.xtream-codes.com" >> /etc/hosts')
-    if not "downloads.xtream-codes.com" in open("/etc/hosts").read(): os.system('echo "127.0.0.1    downloads.xtream-codes.com" >> /etc/hosts')
-    if not "xtream-codes.com" in open("/etc/hosts").read(): os.system('echo "127.0.0.1    xtream-codes.com" >> /etc/hosts')
+    if not "api.xtream-codes.com" in open("/etc/hosts").read(): os.system('echo "127.0.0.1      api.xtream-codes.com" >> /etc/hosts')
+    if not "downloads.xtream-codes.com" in open("/etc/hosts").read(): os.system('echo "127.0.0.1      downloads.xtream-codes.com" >> /etc/hosts')
+    if not "xtream-codes.com" in open("/etc/hosts").read(): os.system('echo "127.0.0.1      xtream-codes.com" >> /etc/hosts')
     if not "@reboot root /home/xtreamcodes/iptv_xtream_codes/start_services.sh" in open("/etc/crontab").read(): os.system('echo "@reboot root /home/xtreamcodes/iptv_xtream_codes/start_services.sh" >> /etc/crontab')
 
 def start(first=True):
@@ -236,26 +234,25 @@ def modifyNginx():
     rPrevData = open(rPath, "r").read()
     if not "listen 25500;" in rPrevData:
         shutil.copy(rPath, "%s.xc" % rPath)
-        rData = "}".join(rPrevData.split("}")[:-1]) + "    server {\n        listen 25500;\n        index index.php index.html index.htm;\n        root /home/xtreamcodes/iptv_xtream_codes/admin/;\n\n        location ~ \.php$ {\n			limit_req zone=one burst=8;\n            try_files $uri =404;\n			fastcgi_index index.php;\n			fastcgi_pass php;\n			include fastcgi_params;\n			fastcgi_buffering on;\n			fastcgi_buffers 96 32k;\n			fastcgi_buffer_size 32k;\n			fastcgi_max_temp_file_size 0;\n			fastcgi_keep_conn on;\n			fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n			fastcgi_param SCRIPT_NAME $fastcgi_script_name;\n        }\n    }\n}"
-        rFile = open(rPath, "w")
-        rFile.write(rData)
-        rFile.close()
+        rData = "}".join(rPrevData.split("}")[:-1]) + "    server {\n        listen 25500;\n        index index.php index.html index.htm;\n        root /home/xtreamcodes/iptv_xtream_codes/admin/;\n\n        location ~ \.php$ {\n            limit_req zone=one burst=8;\n            try_files $uri =404;\n            fastcgi_index index.php;\n            fastcgi_pass php;\n            include fastcgi_params;\n            fastcgi_buffering on;\n            fastcgi_buffers 96 32k;\n            fastcgi_buffer_size 32k;\n            fastcgi_max_temp_file_size 0;\n            fastcgi_keep_conn on;\n            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;\n            fastcgi_param SCRIPT_NAME $fastcgi_script_name;\n        }\n    }\n}"
+        with open(rPath, "w") as rFile:
+            rFile.write(rData)
 
 if __name__ == "__main__":
     printc("Xtream UI - Installer Mirror", col.OKGREEN, 2)
-    print "%s │ NOTE: this is a forked mirror of original installer from https://xtream-ui.com/install/install.py %s" % (col.OKGREEN, col.ENDC)
-    print "%s │ Check out the mirror repo: https://xtream-ui.org %s" % (col.OKGREEN, col.ENDC)
-    print "%s │ and https://github.com/xtream-ui-org/xtream-ui-install %s" % (col.OKGREEN, col.ENDC)
-    print " "
-    rType = raw_input("  Installation Type [MAIN, LB, UPDATE]: ")
-    print " "
+    print("%s │ NOTE: this is a forked mirror of original installer from https://xtream-ui.com/install/install.py %s" % (col.OKGREEN, col.ENDC))
+    print("%s │ Check out the mirror repo: https://xtream-ui.org %s" % (col.OKGREEN, col.ENDC))
+    print("%s │ and https://github.com/xtream-ui-org/xtream-ui-install %s" % (col.OKGREEN, col.ENDC))
+    print(" ")
+    rType = input("  Installation Type [MAIN, LB, UPDATE]: ")
+    print(" ")
     if rType.upper() in ["MAIN", "LB"]:
         if rType.upper() == "LB":
-            rHost = raw_input("  Main Server IP Address: ")
-            rPassword = raw_input("  MySQL Password: ")
-            try: rServerID = int(raw_input("  Load Balancer Server ID: "))
+            rHost = input("  Main Server IP Address: ")
+            rPassword = input("  MySQL Password: ")
+            try: rServerID = int(input("  Load Balancer Server ID: "))
             except: rServerID = -1
-            print " "
+            print(" ")
         else:
             rHost = "127.0.0.1"
             rPassword = generate()
@@ -265,8 +262,8 @@ if __name__ == "__main__":
         rPort = 7999
         if len(rHost) > 0 and len(rPassword) > 0 and rServerID > -1:
             printc("Start installation? Y/N", col.WARNING)
-            if raw_input("  ").upper() == "Y":
-                print " "
+            if input("  ").upper() == "Y":
+                print(" ")
                 rRet = prepare(rType.upper())
                 if not install(rType.upper()): sys.exit(1)
                 if rType.upper() == "MAIN":
@@ -288,7 +285,7 @@ if __name__ == "__main__":
     elif rType.upper() == "UPDATE":
         if os.path.exists("/home/xtreamcodes/iptv_xtream_codes/wwwdir/api.php"):
             printc("Update Admin Panel? Y/N?", col.WARNING)
-            if raw_input("  ").upper() == "Y":
+            if input("  ").upper() == "Y":
                 if not update(rType.upper()): sys.exit(1)
                 printc("Installation completed!", col.OKGREEN, 2)
                 start()
